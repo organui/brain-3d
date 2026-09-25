@@ -57,3 +57,16 @@ Console: no errors were recorded during the normal desktop, interaction, recover
 ## Remaining review limits
 
 Independent expert anatomical review, assistive-technology screen-reader sessions, physical mobile hardware, browser engines other than Chromium, sustained GPU/performance profiling, and forced WebGL context loss were not tested. The 5.87 MB model and 793 kB minified Three.js chunk are acceptable for this local demonstration but remain the main download/performance cost.
+
+## Deployed review artifact
+
+Verified deployment on 2026-09-25:
+
+- URL: `https://brain-3d-beta.vercel.app/`
+- Deployment: `dpl_9FMi4etT8g5TtK22AgyfDV7nUm2E`
+- Commit: `02ce641`
+- Framework: Vite static output
+- Status: Ready
+- Vercel assigned the project’s first deployment to the production target automatically; no custom domain was attached. Deployment protection remains enabled.
+
+The artifact was built locally with `vercel build --target preview` and uploaded with `vercel deploy --prebuilt`. `vercel inspect` reported Ready, and authenticated `vercel curl` returned the expected HTML. A real-browser smoke test loaded the 5.87 MB GLB, rendered 19 of 19 structures, exercised Reveal inside (15 of 19 visible), opened Anatomy, and filtered ventricular structures. No browser errors were recorded; the known upstream `THREE.Clock` deprecation warning remained. The Vercel error-log scan returned no records, as expected for this static deployment.

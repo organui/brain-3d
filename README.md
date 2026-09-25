@@ -2,6 +2,8 @@
 
 A focused, open-source 3D brain anatomy explorer from [OrganUI](https://github.com/organui). It is a standalone React application: no sibling checkout, monorepo package, or remote runtime service is required.
 
+**Review deployment:** [brain-3d-beta.vercel.app](https://brain-3d-beta.vercel.app/) (Vercel team access may be required while deployment protection is enabled).
+
 ![OrganUI Brain desktop overview](docs/screenshots/desktop.png)
 
 ## What works
