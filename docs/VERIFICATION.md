@@ -11,6 +11,7 @@ Verified locally on 2026-09-25 with Bun 1.4.2 and the Codex in-app Chromium brow
 | `bun run build` | Pass: Vite 8.3 production build |
 | `bun run verify:model` | Pass: 19 mapped nodes, 232,420 triangles, 5,865,004 bytes, runtime SHA-256 matched |
 | `bun run format:check` | Pass |
+| Fresh local clone | Pass: frozen offline lockfile install, production build, tests, and model verification without sibling paths |
 
 The state tests verify that isolation leaves exactly one intended structure visible, reveal hides only four left cerebral-lobe surface groups, deep anatomy remains visible during reveal, every guided-tour selection remains visible, and structure/FMA identifiers are unique.
 
