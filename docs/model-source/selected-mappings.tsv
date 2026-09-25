@@ -1,0 +1,46 @@
+hierarchy	concept id	name	element file id
+partof	FMA72970	left frontal lobe	FJ1744
+partof	FMA72970	left frontal lobe	FJ1787
+partof	FMA72970	left frontal lobe	FJ1800
+partof	FMA72970	left frontal lobe	FJ1833
+partof	FMA72969	right frontal lobe	FJ1745
+partof	FMA72969	right frontal lobe	FJ1788
+partof	FMA72969	right frontal lobe	FJ1801
+partof	FMA72969	right frontal lobe	FJ1834
+partof	FMA72974	left parietal lobe	FJ1732
+partof	FMA72974	left parietal lobe	FJ1797
+partof	FMA72974	left parietal lobe	FJ1835
+partof	FMA72974	left parietal lobe	FJ1841
+partof	FMA72973	right parietal lobe	FJ1733
+partof	FMA72973	right parietal lobe	FJ1798
+partof	FMA72973	right parietal lobe	FJ1836
+partof	FMA72973	right parietal lobe	FJ1842
+partof	FMA72972	left temporal lobe	FJ1746
+partof	FMA72972	left temporal lobe	FJ1783
+partof	FMA72972	left temporal lobe	FJ1785
+partof	FMA72972	left temporal lobe	FJ1789
+partof	FMA72971	right temporal lobe	FJ1747
+partof	FMA72971	right temporal lobe	FJ1784
+partof	FMA72971	right temporal lobe	FJ1786
+partof	FMA72971	right temporal lobe	FJ1790
+partof	FMA72976	left occipital lobe	FJ1791
+partof	FMA72975	right occipital lobe	FJ1792
+partof	FMA72714	left hippocampus	FJ1759
+partof	FMA72713	right hippocampus	FJ1807
+partof	FMA61993	midbrain	FJ1762
+partof	FMA61993	midbrain	FJ1770
+partof	FMA61993	midbrain	FJ1779
+partof	FMA61993	midbrain	FJ1810
+partof	FMA61993	midbrain	FJ1817
+partof	FMA61993	midbrain	FJ1826
+partof	FMA67943	pons	FJ1775
+partof	FMA67943	pons	FJ1822
+partof	FMA62004	medulla oblongata	FJ1769
+partof	FMA62004	medulla oblongata	FJ1831
+partof	FMA67944	cerebellum	FJ1781
+partof	FMA67944	cerebellum	FJ1830
+partof	FMA78450	left lateral ventricle	FJ1767
+partof	FMA78449	right lateral ventricle	FJ1814
+partof	FMA78454	third ventricle	FJ1730
+partof	FMA78467	cerebral aqueduct	FJ1738
+partof	FMA78469	fourth ventricle	FJ1731
