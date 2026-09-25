@@ -14,7 +14,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RotateCcw, Box, AlertCircle } from 'lucide-react'
 import SceneCanvas from './SceneCanvas'
 import { byId, structures, type View } from './anatomy'
-import manifest from '../public/models/manifest.json'
+
+const MODEL_BYTES = 5_865_004
 
 export type ViewerHandle = {
   preset: (view: View) => void
@@ -225,7 +226,7 @@ export default function Viewer(props: Props) {
           signal: AbortSignal.any([abort.signal, AbortSignal.timeout(30000)]),
         })
         if (!response.ok) throw new Error(`The model request returned HTTP ${response.status}.`)
-        const total = Number(response.headers.get('content-length')) || manifest.runtime.bytes
+        const total = Number(response.headers.get('content-length')) || MODEL_BYTES
         const reader = response.body?.getReader()
         let data: ArrayBuffer
         if (reader) {
