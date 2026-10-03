@@ -58,6 +58,18 @@ Console: no errors were recorded during the normal desktop, interaction, recover
 
 Independent expert anatomical review, assistive-technology screen-reader sessions, physical mobile hardware, browser engines other than Chromium, sustained GPU/performance profiling, and forced WebGL context loss were not tested. The 5.87 MB model and 793 kB minified Three.js chunk are acceptable for this local demonstration but remain the main download/performance cost.
 
+## Polish pass (2026-10-03)
+
+Changes: per-view camera framing fitted to sampled mesh vertices (the anterior overview is about 25% larger at 1440×900), selection emphasis that recedes unselected structures toward the canvas color, and row/button hover styles limited to hover-capable pointers so touch taps no longer leave a stale highlight.
+
+Checked with Bun 1.4.2 and Playwright-driven headless Chromium (SwiftShader WebGL) on local port `4391`:
+
+- `bun run typecheck`, `bun test` (4 tests, 12 assertions), `bun run build`, `bun run verify:model`, and `bun run format:check` passed.
+- All six named views, Reveal inside, guided stop 3, search and selection were inspected at 1440×900; overview and anatomy flow at 390×844 mobile emulation.
+- Direct mesh click selected **Right frontal lobe**; arrow-key rotation switched to **Custom view**; repeated zoom in/out stayed within limits; resizing to 900×700 then Reset returned to the framed **Anterior** view with 19 of 19 visible.
+- No page or console errors were recorded.
+- Screenshots in `docs/screenshots/` (except `deployed-preview.png` and `model-failure.png`) were regenerated in this pass. The Vercel deployment below predates these changes.
+
 ## Deployed review artifact
 
 Verified deployment on 2026-09-25:

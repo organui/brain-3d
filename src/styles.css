@@ -79,8 +79,10 @@ input {
     color 0.16s,
     opacity 0.16s;
 }
-button:not(:disabled):hover {
-  background: #e9ebe4;
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    background: #e9ebe4;
+  }
 }
 button svg,
 a svg {
@@ -492,12 +494,17 @@ button svg {
   border-radius: 10px;
   transition: background 0.16s;
 }
-.structure-list li:hover,
-.structure-list li:focus-within {
-  background: var(--wash);
+/* Touch taps leave a sticky :hover; keep row hover to pointer devices. */
+@media (hover: hover) {
+  .structure-list li:hover {
+    background: var(--wash);
+  }
+  .structure-select:not(:disabled):hover {
+    background: transparent;
+  }
 }
-.structure-select:not(:disabled):hover {
-  background: transparent;
+.structure-list li:has(:focus-visible) {
+  background: var(--wash);
 }
 .structure-select {
   display: flex;

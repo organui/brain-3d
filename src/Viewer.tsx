@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import {
   Box3,
+  Color,
   Group,
   Mesh,
   MeshStandardMaterial,
@@ -41,12 +42,40 @@ function disposeModel(model: Group) {
   })
 }
 
+const viewDirections: Record<View, [number, number, number]> = {
+  Anterior: [0, 0, 1],
+  Posterior: [0, 0, -1],
+  'Left lateral': [1, 0, 0],
+  'Right lateral': [-1, 0, 0],
+  Superior: [0, 1, 0],
+  Inferior: [0, -1, 0],
+}
+
+// Every 16th vertex is plenty to bound the silhouette at a negligible cost.
+function samplePoints(model: Group) {
+  const points: Vector3[] = []
+  model.updateMatrixWorld(true)
+  model.traverse((object) => {
+    if (!(object instanceof Mesh)) return
+    const position = object.geometry.getAttribute('position')
+    for (let i = 0; i < position.count; i += 16) {
+      points.push(new Vector3().fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld))
+    }
+  })
+  return points
+}
+
 function CameraControls({
   controlsRef,
   onFreeView,
   onInteraction,
   radius,
-}: Pick<Props, 'controlsRef' | 'onFreeView'> & { radius: number; onInteraction: () => void }) {
+  points,
+}: Pick<Props, 'controlsRef' | 'onFreeView'> & {
+  radius: number
+  points: Vector3[]
+  onInteraction: () => void
+}) {
   const { camera, gl, invalidate, size } = useThree()
   const orbit = useRef<OrbitControls | null>(null)
   const previousPose = useRef<{ position: Vector3; distance: number } | null>(null)
@@ -92,27 +121,36 @@ function CameraControls({
     controls.addEventListener('change', change)
     controls.addEventListener('start', start)
     controls.addEventListener('end', end)
-    const aspect = size.width / size.height
-    const angle = ((camera as PerspectiveCamera).fov * Math.PI) / 360
-    const distance = (radius / Math.sin(Math.atan(Math.tan(angle) * Math.min(aspect, 1)))) * 0.84
+    const tanV = Math.tan(((camera as PerspectiveCamera).fov * Math.PI) / 360)
+    const tanH = tanV * (size.width / size.height)
+    // Fit sampled surface points to each view's frustum rather than a bounding
+    // sphere, so every named view frames the brain at a similar, generous size.
+    const fit = (direction: Vector3) => {
+      camera.position.copy(direction)
+      camera.lookAt(0, 0, 0)
+      camera.updateMatrixWorld()
+      const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0)
+      const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1)
+      const fill = 0.68
+      let needed = 0
+      for (const p of points) {
+        needed = Math.max(
+          needed,
+          p.dot(direction) +
+            Math.max(Math.abs(p.dot(right)) / (tanH * fill), Math.abs(p.dot(up)) / (tanV * fill)),
+        )
+      }
+      return Math.min(controls.maxDistance, Math.max(controls.minDistance, needed))
+    }
+    const directionFor = (view: View) => new Vector3(...viewDirections[view])
+    const distance = fit(directionFor('Anterior'))
     const preset = (view: View) => {
       interacting = false
       // reset() clears residual damping before assigning a deterministic view.
       controls.reset()
-      const direction: [number, number, number] =
-        view === 'Posterior'
-          ? [0, 0, -1]
-          : view === 'Left lateral'
-            ? [1, 0, 0]
-            : view === 'Right lateral'
-              ? [-1, 0, 0]
-              : view === 'Superior'
-                ? [0, 1, 0]
-                : view === 'Inferior'
-                  ? [0, -1, 0]
-                  : [0, 0, 1]
+      const direction = directionFor(view)
       controls.target.set(0, 0, 0)
-      camera.position.set(...direction).multiplyScalar(distance)
+      camera.position.copy(direction).multiplyScalar(fit(direction))
       camera.lookAt(0, 0, 0)
       controls.update()
       invalidate()
@@ -161,10 +199,12 @@ function CameraControls({
       controls.removeEventListener('end', end)
       media.removeEventListener('change', motion)
     }
-  }, [camera, gl, invalidate, controlsRef, radius, size.width, size.height])
+  }, [camera, gl, invalidate, controlsRef, radius, points, size.width, size.height])
   useFrame(() => orbit.current?.update())
   return null
 }
+
+const recede = new Color('#ebe8e1')
 
 function Model({
   model,
@@ -182,8 +222,11 @@ function Model({
       object.visible = !hidden.has(id)
       const material = object.material as MeshStandardMaterial
       material.color.set(structure.color)
+      // Recede unselected structures toward the canvas so the selection reads
+      // from any view without hiding its surroundings.
+      if (selected && selected !== id) material.color.lerp(recede, 0.45)
       material.emissive.set(selected === id ? '#914922' : '#000000')
-      material.emissiveIntensity = selected === id ? 0.24 : 0
+      material.emissiveIntensity = selected === id ? 0.28 : 0
       material.roughness = 0.58
     })
     invalidate()
@@ -301,6 +344,7 @@ export default function Viewer(props: Props) {
     () => (model ? new Box3().setFromObject(model).getSize(new Vector3()).length() / 2 : 2),
     [model],
   )
+  const points = useMemo(() => (model ? samplePoints(model) : []), [model])
   return (
     <div
       className="canvas-wrap"
@@ -371,6 +415,7 @@ export default function Viewer(props: Props) {
             onFreeView={props.onFreeView}
             onInteraction={() => setHasInteracted(true)}
             radius={radius}
+            points={points}
           />
         </SceneCanvas>
       )}
