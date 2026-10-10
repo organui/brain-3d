@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import {
   Box3,
+  Color,
   Group,
   Mesh,
   MeshStandardMaterial,
@@ -13,7 +14,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RotateCcw, Box, AlertCircle } from 'lucide-react'
 import SceneCanvas from './SceneCanvas'
-import { byId, structures, type View } from './anatomy'
+import { pickVisibleMesh } from './picking'
+import { fitDistance, framingCenter, surfacePoints } from './framing'
+import { byId, emphasis, structures, type View } from './anatomy'
 
 const MODEL_BYTES = 5_865_004
 
@@ -41,12 +44,26 @@ function disposeModel(model: Group) {
   })
 }
 
+const viewDirections: Record<View, [number, number, number]> = {
+  Anterior: [0, 0, 1],
+  Posterior: [0, 0, -1],
+  'Left lateral': [1, 0, 0],
+  'Right lateral': [-1, 0, 0],
+  Superior: [0, 1, 0],
+  Inferior: [0, -1, 0],
+}
+
 function CameraControls({
   controlsRef,
   onFreeView,
   onInteraction,
   radius,
-}: Pick<Props, 'controlsRef' | 'onFreeView'> & { radius: number; onInteraction: () => void }) {
+  points,
+}: Pick<Props, 'controlsRef' | 'onFreeView'> & {
+  radius: number
+  points: Vector3[]
+  onInteraction: () => void
+}) {
   const { camera, gl, invalidate, size } = useThree()
   const orbit = useRef<OrbitControls | null>(null)
   const previousPose = useRef<{ position: Vector3; distance: number } | null>(null)
@@ -92,28 +109,24 @@ function CameraControls({
     controls.addEventListener('change', change)
     controls.addEventListener('start', start)
     controls.addEventListener('end', end)
+    const center = framingCenter(points)
+    const fov = (camera as PerspectiveCamera).fov
     const aspect = size.width / size.height
-    const angle = ((camera as PerspectiveCamera).fov * Math.PI) / 360
-    const distance = (radius / Math.sin(Math.atan(Math.tan(angle) * Math.min(aspect, 1)))) * 0.84
+    const fit = (direction: Vector3) =>
+      Math.min(
+        controls.maxDistance,
+        Math.max(controls.minDistance, fitDistance(points, center, direction, fov, aspect)),
+      )
+    const directionFor = (view: View) => new Vector3(...viewDirections[view])
+    const distance = fit(directionFor('Anterior'))
     const preset = (view: View) => {
       interacting = false
       // reset() clears residual damping before assigning a deterministic view.
       controls.reset()
-      const direction: [number, number, number] =
-        view === 'Posterior'
-          ? [0, 0, -1]
-          : view === 'Left lateral'
-            ? [1, 0, 0]
-            : view === 'Right lateral'
-              ? [-1, 0, 0]
-              : view === 'Superior'
-                ? [0, 1, 0]
-                : view === 'Inferior'
-                  ? [0, -1, 0]
-                  : [0, 0, 1]
-      controls.target.set(0, 0, 0)
-      camera.position.set(...direction).multiplyScalar(distance)
-      camera.lookAt(0, 0, 0)
+      const direction = directionFor(view)
+      controls.target.copy(center)
+      camera.position.copy(direction).multiplyScalar(fit(direction)).add(center)
+      camera.lookAt(center)
       controls.update()
       invalidate()
     }
@@ -144,10 +157,13 @@ function CameraControls({
       },
     }
     if (previousPose.current) {
+      controls.target.copy(center)
       camera.position
         .copy(previousPose.current.position)
+        .sub(center)
         .multiplyScalar(distance / previousPose.current.distance)
-      camera.lookAt(0, 0, 0)
+        .add(center)
+      camera.lookAt(center)
       controls.update()
       invalidate()
     } else preset('Anterior')
@@ -161,9 +177,20 @@ function CameraControls({
       controls.removeEventListener('end', end)
       media.removeEventListener('change', motion)
     }
-  }, [camera, gl, invalidate, controlsRef, radius, size.width, size.height])
+  }, [camera, gl, invalidate, controlsRef, radius, points, size.width, size.height])
   useFrame(() => orbit.current?.update())
   return null
+}
+
+const stageTone = new Color('#e4e3dc')
+const ghosts = new Map<string, string>()
+function ghostColor(color: string) {
+  let value = ghosts.get(color)
+  if (!value) {
+    value = '#' + new Color(color).lerp(stageTone, 0.5).getHexString()
+    ghosts.set(color, value)
+  }
+  return value
 }
 
 function Model({
@@ -181,20 +208,27 @@ function Model({
       if (!structure) return
       object.visible = !hidden.has(id)
       const material = object.material as MeshStandardMaterial
-      material.color.set(structure.color)
-      material.emissive.set(selected === id ? '#914922' : '#000000')
-      material.emissiveIntensity = selected === id ? 0.24 : 0
+      const state = emphasis(id, selected)
+      material.color.set(state === 'ghosted' ? ghostColor(structure.color) : structure.color)
+      material.emissive.set(state === 'selected' ? structure.color : '#000000')
+      material.emissiveIntensity = state === 'selected' ? 0.35 : 0
+      material.transparent = state === 'ghosted'
+      material.opacity = state === 'ghosted' ? 0.22 : 1
+      material.depthWrite = state !== 'ghosted'
       material.roughness = 0.58
+      material.needsUpdate = true
     })
     invalidate()
   }, [model, selected, hidden, invalidate])
   return (
     <primitive
       object={model}
-      onClick={(event: { stopPropagation: () => void; object: Mesh; delta: number }) => {
+      onClick={(event: ThreeEvent<MouseEvent>) => {
         event.stopPropagation()
         if (event.delta > 4) return
-        const id = event.object.userData.structureId || event.object.name
+        const object = pickVisibleMesh(event.intersections)
+        if (!object) return
+        const id = object.userData.structureId || object.name
         if (byId[id]) onSelect(id)
       }}
     />
@@ -301,6 +335,7 @@ export default function Viewer(props: Props) {
     () => (model ? new Box3().setFromObject(model).getSize(new Vector3()).length() / 2 : 2),
     [model],
   )
+  const points = useMemo(() => (model ? surfacePoints(model) : []), [model])
   return (
     <div
       className="canvas-wrap"
@@ -371,6 +406,7 @@ export default function Viewer(props: Props) {
             onFreeView={props.onFreeView}
             onInteraction={() => setHasInteracted(true)}
             radius={radius}
+            points={points}
           />
         </SceneCanvas>
       )}
