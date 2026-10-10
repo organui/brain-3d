@@ -240,3 +240,11 @@ export const tour: {
     isolate: true,
   },
 ]
+
+export type Emphasis = 'normal' | 'selected' | 'ghosted'
+// A selection ghosts everything else so it reads from any view, including
+// structures that sit inside the cerebral surface.
+export function emphasis(id: string, selected: string | null): Emphasis {
+  if (!selected) return 'normal'
+  return id === selected ? 'selected' : 'ghosted'
+}

@@ -11,7 +11,7 @@ A focused, open-source 3D brain anatomy explorer from [OrganUI](https://github.c
 - Rotate, pinch/scroll, zoom buttons, reset, keyboard controls, and six named anatomical views. Manual rotation changes the label to **Custom view**.
 - Nineteen selectable source-backed groups: bilateral frontal, parietal, temporal, and occipital lobes; bilateral hippocampi; cerebellum; midbrain, pons, and medulla; and five ventricular-space surfaces.
 - Each named view is framed from the model's sampled surface, so the brain fills a similar share of the canvas from every side.
-- Synchronized scene/list selection, search by name or FMA identifier, hide, isolate, and restore. Selecting a structure recedes the others toward the canvas tone so the selection reads from any view; a deep structure behind visible tissue stays occluded rather than drawn through it.
+- Synchronized scene/list selection, search by name or FMA identifier, hide, isolate, and restore. Selecting a structure ghosts the others to translucent, canvas-toned surfaces so the selection reads from any view, including deep structures such as the ventricles.
 - **Reveal inside** hides the four left cerebral-lobe surface groups while preserving deeper structures in their original alignment. It is a visibility reveal, not a cut surface or medical image.
 - A five-stop guided exploration that includes the supported reveal and reliably returns to the anterior overview.
 - Initially collapsed anatomy panel, mobile layout, reduced-motion handling, keyboard-accessible controls, loading progress, missing-model recovery, and a text alternative when 3D is unavailable.

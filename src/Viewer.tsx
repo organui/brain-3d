@@ -14,7 +14,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RotateCcw, Box, AlertCircle } from 'lucide-react'
 import SceneCanvas from './SceneCanvas'
-import { byId, structures, type View } from './anatomy'
+import { fitDistance, framingCenter, surfacePoints } from './framing'
+import { byId, emphasis, structures, type View } from './anatomy'
 
 const MODEL_BYTES = 5_865_004
 
@@ -49,20 +50,6 @@ const viewDirections: Record<View, [number, number, number]> = {
   'Right lateral': [-1, 0, 0],
   Superior: [0, 1, 0],
   Inferior: [0, -1, 0],
-}
-
-// Every 16th vertex is plenty to bound the silhouette at a negligible cost.
-function samplePoints(model: Group) {
-  const points: Vector3[] = []
-  model.updateMatrixWorld(true)
-  model.traverse((object) => {
-    if (!(object instanceof Mesh)) return
-    const position = object.geometry.getAttribute('position')
-    for (let i = 0; i < position.count; i += 16) {
-      points.push(new Vector3().fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld))
-    }
-  })
-  return points
 }
 
 function CameraControls({
@@ -121,27 +108,14 @@ function CameraControls({
     controls.addEventListener('change', change)
     controls.addEventListener('start', start)
     controls.addEventListener('end', end)
-    const tanV = Math.tan(((camera as PerspectiveCamera).fov * Math.PI) / 360)
-    const tanH = tanV * (size.width / size.height)
-    // Fit sampled surface points to each view's frustum rather than a bounding
-    // sphere, so every named view frames the brain at a similar, generous size.
-    const fit = (direction: Vector3) => {
-      camera.position.copy(direction)
-      camera.lookAt(0, 0, 0)
-      camera.updateMatrixWorld()
-      const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0)
-      const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1)
-      const fill = 0.68
-      let needed = 0
-      for (const p of points) {
-        needed = Math.max(
-          needed,
-          p.dot(direction) +
-            Math.max(Math.abs(p.dot(right)) / (tanH * fill), Math.abs(p.dot(up)) / (tanV * fill)),
-        )
-      }
-      return Math.min(controls.maxDistance, Math.max(controls.minDistance, needed))
-    }
+    const center = framingCenter(points)
+    const fov = (camera as PerspectiveCamera).fov
+    const aspect = size.width / size.height
+    const fit = (direction: Vector3) =>
+      Math.min(
+        controls.maxDistance,
+        Math.max(controls.minDistance, fitDistance(points, center, direction, fov, aspect)),
+      )
     const directionFor = (view: View) => new Vector3(...viewDirections[view])
     const distance = fit(directionFor('Anterior'))
     const preset = (view: View) => {
@@ -149,9 +123,9 @@ function CameraControls({
       // reset() clears residual damping before assigning a deterministic view.
       controls.reset()
       const direction = directionFor(view)
-      controls.target.set(0, 0, 0)
-      camera.position.copy(direction).multiplyScalar(fit(direction))
-      camera.lookAt(0, 0, 0)
+      controls.target.copy(center)
+      camera.position.copy(direction).multiplyScalar(fit(direction)).add(center)
+      camera.lookAt(center)
       controls.update()
       invalidate()
     }
@@ -182,10 +156,13 @@ function CameraControls({
       },
     }
     if (previousPose.current) {
+      controls.target.copy(center)
       camera.position
         .copy(previousPose.current.position)
+        .sub(center)
         .multiplyScalar(distance / previousPose.current.distance)
-      camera.lookAt(0, 0, 0)
+        .add(center)
+      camera.lookAt(center)
       controls.update()
       invalidate()
     } else preset('Anterior')
@@ -204,7 +181,16 @@ function CameraControls({
   return null
 }
 
-const recede = new Color('#ebe8e1')
+const stageTone = new Color('#e4e3dc')
+const ghosts = new Map<string, string>()
+function ghostColor(color: string) {
+  let value = ghosts.get(color)
+  if (!value) {
+    value = '#' + new Color(color).lerp(stageTone, 0.5).getHexString()
+    ghosts.set(color, value)
+  }
+  return value
+}
 
 function Model({
   model,
@@ -221,13 +207,15 @@ function Model({
       if (!structure) return
       object.visible = !hidden.has(id)
       const material = object.material as MeshStandardMaterial
-      material.color.set(structure.color)
-      // Recede unselected structures toward the canvas so the selection reads
-      // from any view without hiding its surroundings.
-      if (selected && selected !== id) material.color.lerp(recede, 0.45)
-      material.emissive.set(selected === id ? '#914922' : '#000000')
-      material.emissiveIntensity = selected === id ? 0.28 : 0
+      const state = emphasis(id, selected)
+      material.color.set(state === 'ghosted' ? ghostColor(structure.color) : structure.color)
+      material.emissive.set(state === 'selected' ? structure.color : '#000000')
+      material.emissiveIntensity = state === 'selected' ? 0.35 : 0
+      material.transparent = state === 'ghosted'
+      material.opacity = state === 'ghosted' ? 0.22 : 1
+      material.depthWrite = state !== 'ghosted'
       material.roughness = 0.58
+      material.needsUpdate = true
     })
     invalidate()
   }, [model, selected, hidden, invalidate])
@@ -344,7 +332,7 @@ export default function Viewer(props: Props) {
     () => (model ? new Box3().setFromObject(model).getSize(new Vector3()).length() / 2 : 2),
     [model],
   )
-  const points = useMemo(() => (model ? samplePoints(model) : []), [model])
+  const points = useMemo(() => (model ? surfacePoints(model) : []), [model])
   return (
     <div
       className="canvas-wrap"

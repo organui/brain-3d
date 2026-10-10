@@ -91,7 +91,9 @@ export default function SceneCanvas({
           <SceneErrorBoundary onFailure={failure}>{latest.current.children}</SceneErrorBoundary>,
         )
         observer = new ResizeObserver(() => {
-          void sceneRoot?.configure({ size: size() }).catch(() => {
+          // configure() falls back to frameloop 'always' when it is omitted, which
+          // would keep rendering every frame after the first resize.
+          void sceneRoot?.configure({ size: size(), frameloop: 'demand' }).catch(() => {
             if (!cancelled) failure()
           })
         })
