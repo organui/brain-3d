@@ -207,7 +207,7 @@ button svg {
   overflow: hidden;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 650;
   letter-spacing: 1.3px;
   color: var(--muted);
@@ -239,7 +239,7 @@ button svg {
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   pointer-events: none;
   opacity: 0.7;
@@ -256,12 +256,12 @@ button svg {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .scene-status button {
   text-decoration: underline;
-  font-size: 10px;
+  font-size: 11px;
   padding: 4px;
 }
 .pending {
@@ -430,7 +430,7 @@ button svg {
   letter-spacing: -0.5px;
 }
 .count-tag {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .search-wrap {
@@ -477,7 +477,7 @@ button svg {
   align-items: center;
   justify-content: space-between;
   font-family: 'DM Sans Variable', sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.25px;
   color: var(--muted);
@@ -532,7 +532,7 @@ button svg {
 .structure-select small {
   display: inline-block;
   margin-left: 6px;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--muted);
 }
 .structure-list li.selected {
@@ -595,7 +595,7 @@ button svg {
 .detail-card .small-note {
   display: block;
   margin-top: 13px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.7;
   color: var(--muted);
 }
@@ -603,12 +603,12 @@ button svg {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--muted);
   margin-bottom: 8px;
 }
 .detail-eyebrow .eyebrow {
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 1px;
 }
 .detail-actions {
@@ -637,18 +637,18 @@ button svg {
   background: #42483f;
 }
 .restore-detail {
-  font-size: 10px;
+  font-size: 11px;
   margin-left: auto;
   text-decoration: underline;
 }
 .model-note {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   line-height: 1.7;
 }
 .model-note summary {
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   user-select: none;
   padding: 2px 0;
 }
@@ -677,7 +677,7 @@ button svg {
   color: var(--muted);
 }
 .tour-card .eyebrow {
-  font-size: 7px;
+  font-size: 9px;
   letter-spacing: 1.05px;
   color: var(--muted);
 }
@@ -686,7 +686,7 @@ button svg {
   font-weight: 550;
 }
 .tour-card p {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   margin-top: 5px;
   line-height: 1.8;
@@ -743,13 +743,13 @@ button svg {
   margin-top: 10px;
 }
 .tour-controls .text-button {
-  font-size: 10px;
+  font-size: 11px;
 }
 .review-note {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--muted);
   line-height: 1.7;
 }
@@ -764,7 +764,7 @@ button svg {
   align-items: center;
   justify-content: space-between;
   padding: 10px 28px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted);
   gap: 15px;
   background: var(--surface);
@@ -820,7 +820,7 @@ button svg {
   text-underline-offset: 2px;
 }
 .about-dialog .small-note {
-  font-size: 10px;
+  font-size: 11px;
 }
 .about-dialog > .button {
   margin-top: 10px;
@@ -853,6 +853,22 @@ button svg {
   min-height: 130px;
   overflow-y: auto;
   padding-right: 3px;
+  --fade-top: 0px;
+  --fade-bottom: 0px;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bottom)),
+    transparent
+  );
+}
+/* Fade whichever edge has more rows past it so a clipped list reads as scrollable. */
+.structure-list.more-above {
+  --fade-top: 28px;
+}
+.structure-list.more-below {
+  --fade-bottom: 36px;
 }
 .structure-select {
   font-size: 12.5px;
@@ -861,7 +877,7 @@ button svg {
   margin-top: 0;
 }
 .detail-card > .cavity-note {
-  font-size: 10px;
+  font-size: 11px;
   color: #806653;
   background: #f0ece3;
   border-radius: 4px;
@@ -933,19 +949,19 @@ button svg {
     inset: 76px 0;
   }
   .canvas-hint {
-    font-size: 9px;
+    font-size: 11px;
     bottom: 0;
   }
   .scene-status {
     top: 16px;
     left: 20px;
-    font-size: 9px;
+    font-size: 11px;
   }
   .selection-chip {
     top: 44px;
     right: 20px;
     max-width: calc(100% - 40px);
-    font-size: 10px;
+    font-size: 12px;
   }
   .stage-bottom {
     bottom: 20px;
@@ -987,8 +1003,9 @@ button svg {
   }
   .structure-list {
     gap: 20px;
-    overflow: visible;
     flex: none;
+    /* Keep the details card in reach below the list on phones. */
+    max-height: 46svh;
   }
   .structure-list h3 {
     font-size: 11px;
@@ -1019,7 +1036,7 @@ button svg {
     font-size: 10px;
   }
   .detail-eyebrow .eyebrow {
-    font-size: 9px;
+    font-size: 10px;
   }
   .button {
     font-size: 12px;
@@ -1047,7 +1064,7 @@ button svg {
     font-size: 14px;
   }
   .tour-card .eyebrow {
-    font-size: 8px;
+    font-size: 9px;
   }
   .tour-card p {
     font-size: 11px;
@@ -1061,7 +1078,7 @@ button svg {
     font-size: 12px;
   }
   .review-note {
-    font-size: 9px;
+    font-size: 10px;
   }
   .mobile-return {
     display: flex;
@@ -1072,7 +1089,7 @@ button svg {
     justify-content: center;
     min-height: 48px;
     padding: 12px 20px;
-    font-size: 9px;
+    font-size: 10px;
   }
   .site-footer > span:first-child {
     display: none;
