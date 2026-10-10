@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import {
   Box3,
   Color,
@@ -14,6 +14,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RotateCcw, Box, AlertCircle } from 'lucide-react'
 import SceneCanvas from './SceneCanvas'
+import { pickVisibleMesh } from './picking'
 import { fitDistance, framingCenter, surfacePoints } from './framing'
 import { byId, emphasis, structures, type View } from './anatomy'
 
@@ -222,10 +223,12 @@ function Model({
   return (
     <primitive
       object={model}
-      onClick={(event: { stopPropagation: () => void; object: Mesh; delta: number }) => {
+      onClick={(event: ThreeEvent<MouseEvent>) => {
         event.stopPropagation()
         if (event.delta > 4) return
-        const id = event.object.userData.structureId || event.object.name
+        const object = pickVisibleMesh(event.intersections)
+        if (!object) return
+        const id = object.userData.structureId || object.name
         if (byId[id]) onSelect(id)
       }}
     />
