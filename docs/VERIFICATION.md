@@ -111,7 +111,7 @@ The hand-built anatomy list and its search box were replaced with the OrganUI re
 
 ## Registry anatomy tree update: colours, non-selectable groups, built-in reveal (2026-10-16)
 
-Reinstalled `anatomy-tree` from organui PR #12 (commit `d6b36d0`, unmerged, served locally; see [registry integration](REGISTRY_INTEGRATION.md)). Leaves now carry their mesh colour, group rows are `selectable: false`, and the app's own scroll-to-selection effect was removed in favour of the component's reveal. Checked with Bun 1.4.2 and Playwright 1.56 driving headless Chromium (SwiftShader WebGL) against the production build (`bun run preview`) on local port `4471`:
+Reinstalled `anatomy-tree` from organui PR #12 (commit `b8e6451`, unmerged, served locally; see [registry integration](REGISTRY_INTEGRATION.md)). Leaves now carry their mesh colour, group rows are `selectable: false`, and the app's own scroll-to-selection effect was removed in favour of the component's reveal. Checked with Bun 1.4.2 and Playwright 1.56 driving headless Chromium (SwiftShader WebGL) against the production build (`bun run preview`) on local port `4471`:
 
 - From a clean `node_modules`: `bun install --frozen-lockfile`, `bun run typecheck`, `bun test` (13 tests, 99 assertions), `bun run build`, `bun run verify:model`, and `bun run format:check` passed. `package.json` and `bun.lock` are unchanged (`@base-ui/react` stays pinned at 1.8.0).
 - `scripts/browser-check.cjs` passed at 1440×900 and 390×844, including the earlier checks above (with group Enter now expanding/collapsing) and:

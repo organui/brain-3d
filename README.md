@@ -49,7 +49,7 @@ Raw downloads stay in ignored `.asset-cache/`; the script downloads them when ab
 
 ## Registry component
 
-`src/components/ui/anatomy-tree.tsx` is installed unmodified from the OrganUI registry with the shadcn CLI (currently from organui PR #12, commit `d6b36d0`, served locally until it merges) (Tailwind CSS 4 and Base UI 1.8.0), and it is excluded from Prettier so its checksum stays stable. Brain-specific mapping lives in `src/anatomy-adapter.ts`. The install command, checksums, adapter table, and design decisions are in [registry integration](docs/REGISTRY_INTEGRATION.md).
+`src/components/ui/anatomy-tree.tsx` is installed unmodified from the OrganUI registry with the shadcn CLI (currently from organui PR #12, commit `b8e6451`, served locally until it merges) (Tailwind CSS 4 and Base UI 1.8.0), and it is excluded from Prettier so its checksum stays stable. Brain-specific mapping lives in `src/anatomy-adapter.ts`. The install command, checksums, adapter table, and design decisions are in [registry integration](docs/REGISTRY_INTEGRATION.md).
 
 ## Model scope and provenance
 

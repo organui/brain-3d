@@ -7,10 +7,10 @@ The Anatomy panel's structure list is the OrganUI registry component `anatomy-tr
 Reinstalled on 2026-10-16 (overwriting the earlier install from organui `master` `5e20c41`) with:
 
 ```sh
-REGISTRY_URL=http://127.0.0.1:4411 bunx shadcn@4.21.0 add http://127.0.0.1:4411/anatomy-tree.json -y -o
+REGISTRY_URL=http://127.0.0.1:4412 bunx shadcn@4.21.0 add http://127.0.0.1:4412/anatomy-tree.json -y -o
 ```
 
-The item is the registry artifact from **organui PR #12** (branch commit **`d6b36d0`**), which adds the `color` and `selectable` node options and the built-in reveal of an outside selection. PR #12 was **not merged** at the time. `organui.com` (the public registry) and `ui.shadcn.com` were blocked by the network policy of the sandbox this work was done in, so the artifact was served from a local static server (`python3 -m http.server 4411 --bind 127.0.0.1`), together with shadcn's `colors/neutral.json` fetched from the shadcn GitHub repository. `REGISTRY_URL` points the CLI's base-color lookup at that server instead of `ui.shadcn.com`. **After PR #12 merges, re-run the install against organui.com and confirm the checksums below** (or record the new ones):
+The item is the registry artifact from **organui PR #12** (branch commit **`b8e6451`**), which adds the `color` and `selectable` node options and the built-in reveal of an outside selection. PR #12 was **not merged** at the time. `organui.com` (the public registry) and `ui.shadcn.com` were blocked by the network policy of the sandbox this work was done in, so the artifact was served from a local static server (`python3 -m http.server 4412 --bind 127.0.0.1`), together with shadcn's `colors/neutral.json` fetched from the shadcn GitHub repository. `REGISTRY_URL` points the CLI's base-color lookup at that server instead of `ui.shadcn.com`. **After PR #12 merges, re-run the install against organui.com and confirm the checksums below** (or record the new ones):
 
 ```sh
 bunx shadcn@4.21.0 add https://organui.com/r/anatomy-tree.json -y -o
@@ -20,9 +20,9 @@ Provenance at install time:
 
 | Artifact                                               | SHA-256                                                            |
 | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| Served `anatomy-tree.json` (organui PR #12, `d6b36d0`) | `32fbc477ece5f02ac135dbf0a5b4c059c37fc2ca9abc8982641b55c080cc9b30` |
-| Embedded source (`files[0].content`)                   | `cb0ebd637b64a9813ba1139560315024b315580ad04e5df6eca3b3d1bb4844c0` |
-| Tracked installed `src/components/ui/anatomy-tree.tsx` | `dc14798adfbdcaef505cbe05e2ca92a6a3aae6164465d06e8d4d99cd415efab2` |
+| Served `anatomy-tree.json` (organui PR #12, `b8e6451`) | `719c1547afb1453e809ee1b2fca0dc99858083aa3ff712477a493c77e8f5f389` |
+| Embedded source (`files[0].content`)                   | `14709d69270066ebb4677e736d71fa59c2ec9cf9c1f0e1a6a8236795633944cd` |
+| Tracked installed `src/components/ui/anatomy-tree.tsx` | `3d5554cdc179f1ad778fd6321cc1414c293c4cca0535efd9aab679c686893538` |
 
 The item declares `@base-ui/react@^1.8.0`. The CLI again wrote `^1.8.0` into `package.json`; it was changed back to the exact `1.8.0` pin and `bun install` re-run, so `bun.lock` (text format) is unchanged and resolves 1.8.0. The project uses React 19.2.8, TypeScript 7.0.2, Vite 8.3.0, Tailwind CSS 4.1.18 (`tailwindcss` + `@tailwindcss/vite`), and the kidneys `components.json` (Base UI consumer shape, `@/*` aliases).
 
