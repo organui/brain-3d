@@ -4,43 +4,45 @@ The Anatomy panel's structure list is the OrganUI registry component `anatomy-tr
 
 ## Exact installation
 
-Installed on 2026-10-16 with:
+Reinstalled on 2026-10-16 (overwriting the earlier install from organui `master` `5e20c41`) with:
 
 ```sh
-REGISTRY_URL=http://127.0.0.1:4410 bunx shadcn@4.21.0 add http://127.0.0.1:4410/anatomy-tree.json -y
+REGISTRY_URL=http://127.0.0.1:4411 bunx shadcn@4.21.0 add http://127.0.0.1:4411/anatomy-tree.json -y -o
 ```
 
-`organui.com` (the public registry) and `ui.shadcn.com` were blocked by the network policy of the sandbox this work was done in. The item was therefore served from a local static server (`python3 -m http.server 4410 --bind 127.0.0.1`) hosting the registry artifact built from the OrganUI monorepo `master` at commit **`5e20c41`**, plus shadcn's `colors/neutral.json` fetched from the shadcn GitHub repository. `REGISTRY_URL` points the CLI's base-color lookup at that server instead of `ui.shadcn.com`. With normal network access the equivalent command is:
+The item is the registry artifact from **organui PR #12** (branch commit **`d6b36d0`**), which adds the `color` and `selectable` node options and the built-in reveal of an outside selection. PR #12 was **not merged** at the time. `organui.com` (the public registry) and `ui.shadcn.com` were blocked by the network policy of the sandbox this work was done in, so the artifact was served from a local static server (`python3 -m http.server 4411 --bind 127.0.0.1`), together with shadcn's `colors/neutral.json` fetched from the shadcn GitHub repository. `REGISTRY_URL` points the CLI's base-color lookup at that server instead of `ui.shadcn.com`. **After PR #12 merges, re-run the install against organui.com and confirm the checksums below** (or record the new ones):
 
 ```sh
-bunx shadcn@4.21.0 add https://organui.com/r/anatomy-tree.json -y
+bunx shadcn@4.21.0 add https://organui.com/r/anatomy-tree.json -y -o
 ```
 
 Provenance at install time:
 
 | Artifact                                               | SHA-256                                                            |
 | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| Served `anatomy-tree.json` (organui `5e20c41`)         | `f519cf85a68142cb7a054f6b2472649d0dec188c5f2381d4315f12f631874a8e` |
-| Embedded source (`files[0].content`)                   | `65a226acc9c873559913611b4fadee51935e955ac63dcc64a8dc5bee2d12e821` |
-| Tracked installed `src/components/ui/anatomy-tree.tsx` | `39b294468f2fd06bb81b8c56f485828f941ddfc9065ea5c7c07fdf19582d1842` |
+| Served `anatomy-tree.json` (organui PR #12, `d6b36d0`) | `32fbc477ece5f02ac135dbf0a5b4c059c37fc2ca9abc8982641b55c080cc9b30` |
+| Embedded source (`files[0].content`)                   | `cb0ebd637b64a9813ba1139560315024b315580ad04e5df6eca3b3d1bb4844c0` |
+| Tracked installed `src/components/ui/anatomy-tree.tsx` | `dc14798adfbdcaef505cbe05e2ca92a6a3aae6164465d06e8d4d99cd415efab2` |
 
-The item declares `@base-ui/react@^1.8.0`. The CLI wrote `^1.8.0` into `package.json`; it was changed back to an exact `1.8.0` pin and `bun install` re-run, so `bun.lock` (text format) resolves 1.8.0. The project uses React 19.2.8, TypeScript 7.0.2, Vite 8.3.0, Tailwind CSS 4.1.18 (`tailwindcss` + `@tailwindcss/vite`), and the kidneys `components.json` (Base UI consumer shape, `@/*` aliases).
+The item declares `@base-ui/react@^1.8.0`. The CLI again wrote `^1.8.0` into `package.json`; it was changed back to the exact `1.8.0` pin and `bun install` re-run, so `bun.lock` (text format) is unchanged and resolves 1.8.0. The project uses React 19.2.8, TypeScript 7.0.2, Vite 8.3.0, Tailwind CSS 4.1.18 (`tailwindcss` + `@tailwindcss/vite`), and the kidneys `components.json` (Base UI consumer shape, `@/*` aliases).
 
 ## Installed-source differences
 
-The only difference between the embedded source and the installed file is that the CLI removed the leading `"use client"` directive (and the blank line after it) for this non-RSC Vite target (`"rsc": false`). No behavior, markup, API, state, or class names differ.
+The only differences between the embedded source and the installed file are that the CLI removed the leading `"use client"` directive (and the blank line after it) for this non-RSC Vite target (`"rsc": false`) and dropped the embedded source's trailing blank line. No behavior, markup, API, state, or class names differ.
 
 The `@/* -> src/*` alias was configured in `tsconfig.json` and `vite.config.ts` before installing, so the CLI wrote the file directly to `src/components/ui/anatomy-tree.tsx` (kidneys had to move it). The file is listed in `.prettierignore` and is never hand-edited, so its checksum above stays stable. Re-running the install command should reproduce it byte for byte.
 
 ## API used
 
-- `data`: the hierarchy from `src/anatomy-adapter.ts` (unique IDs);
+- `data`: the hierarchy from `src/anatomy-adapter.ts` (unique IDs), using the node options
+  - `color` on every leaf: the structure's colour from `src/anatomy.ts`, the same value the 3D mesh material uses, shown as the swatch before the label;
+  - `selectable: false` on every group row: activating a group's label (click or Enter) expands or collapses it instead of selecting, and the row has no `aria-selected`;
 - `selectedId` / `onSelectionChange`: the app's single controlled selection;
 - `visibility` / `onVisibilityChange`: a map keyed by **leaf** IDs, missing = visible;
 - `defaultExpandedIds`: all four groups start expanded, so every structure name is in the text alternative;
 - `label` (`"Brain structures"`, which also produces the visible label "Search brain structures") and `className` (`registry-tree`, for scoped panel styling).
 
-Search and expansion remain internal to the component.
+Search and expansion remain internal to the component. When `selectedId` changes to a row that is not shown (a 3D pick, a tour step, or Reveal inside), the component expands that row's group and scrolls the row into view; the app has no code for this.
 
 ## Application adapter
 
@@ -57,23 +59,24 @@ Groups are the panel headings the explorer already used. They are interface grou
 
 The adapter exports:
 
-- `anatomyTree`, `groupIds`, `groupId` — the tree data;
+- `anatomyTree`, `groupIds`, `groupId` — the tree data (groups `selectable: false`, leaves with `color`);
 - `sceneIdsForNode` — scene leaves for a leaf or group row;
 - `normalizeVisibility` — the component's "missing means visible" contract as an explicit map;
 - `visibilityFromHidden` / `hiddenFromVisibility` — conversion between the app's existing hidden `Set` and the tree's leaf visibility map (unknown and group keys are ignored);
 - `isStructureId`;
 - `assertAnatomyMapping` — runs at import and throws on missing, unknown, or duplicate leaves.
 
-`src/anatomy-adapter.test.ts` covers group IDs and completeness, group-to-leaf mapping, the missing-means-visible rule, hidden-set round-tripping, and each rejection case.
+`src/anatomy-adapter.test.ts` covers group IDs and completeness, non-selectable groups and leaf colours equal to the structure (mesh) colours, group-to-leaf mapping, the missing-means-visible rule, hidden-set round-tripping, and each rejection case.
 
 ## Decisions
 
 - **State ownership.** The app keeps its existing state: `hidden: Set<string>` and a single `selected` structure ID. The tree's `visibility` is derived from `hidden` (`visibilityFromHidden`) and its changes are written back (`hiddenFromVisibility`). Isolate, Hide/Show structure, Reveal inside, the tour, Restore all, and Reset all write the same `hidden` set, so the tree's leaf and parent (`true` / `false` / `"mixed"`) states always match the scene.
-- **Group selection: leaves only.** The explorer's emphasis model (`emphasis()` in `src/anatomy.ts`, used by `Viewer.tsx`) highlights exactly one selected structure at 0.35 emissive and ghosts the rest; it has no multi-structure selection, details card, or chip for a group. Rather than add one, group rows are limited to expand/collapse and visibility toggling. Activating a group's label (click or Enter) is ignored, and the current leaf selection stays as it was. Leaf rows, 3D picks, and tour steps all set the same controlled `selected` ID.
+- **Group selection: leaves only.** The explorer's emphasis model (`emphasis()` in `src/anatomy.ts`, used by `Viewer.tsx`) highlights exactly one selected structure at 0.35 emissive and ghosts the rest; it has no multi-structure selection, details card, or chip for a group. Rather than add one, group rows are `selectable: false`: activating a group's label (click or Enter) expands or collapses it, and the current leaf selection stays as it was. `onSelectionChange` keeps a one-line `isStructureId` guard as a cheap defence. Leaf rows, 3D picks, and tour steps all set the same controlled `selected` ID.
 - **Reset** increments a `key` on `<AnatomyTree>`, remounting it to clear its internal search text and restore the default expansion, along with selection, visibility, tour, and camera. Tour steps and 3D picks do not clear the tree's search (the old list did); if a search hides the selected row, the chip and details card still show the selection.
-- **Selected row in view.** After a 3D pick, tour step, or Reveal inside, the app scrolls the tree's own row list so the selected row is visible. It does this by querying the rendered `[role="treeitem"][aria-selected="true"]` rather than changing the component. A row inside a collapsed group is not rendered and cannot be scrolled to.
+- **Selected row in view.** Handled by the component's built-in reveal (see above). The app's earlier effect that scrolled the row list to `[aria-selected="true"]` was removed. A selection made while the panel is closed is expanded at that moment; the browser check confirmed that opening the panel from the chip then shows the row selected and in view.
+- **Colour swatches.** Each leaf shows its structure colour, as the old hand-built list did; group rows have none. The selection chip and the 3D selection use the same colour.
 - **Picking.** Hidden structures are not pickable: `pickVisibleMesh` (`src/picking.ts`) discards intersections with objects that are invisible or have an invisible ancestor. The browser check hid a picked lobe and confirmed the same click then selected the structure behind it. Hidden structures stay selectable from the tree, and the details card offers **Show structure**.
-- **Removed:** the hand-built grouped list, its search box and `query` state, its scroll-fade measurement, and their CSS. The tree's search matches labels only, so searching by FMA identifier or BodyParts3D source name (which the old box supported) is no longer available. FMA IDs and source names remain in the details card. The per-row colour dots of the old list are gone too. The chip and the 3D selection still use the structure colour.
+- **Removed:** the hand-built grouped list, its search box and `query` state, its scroll-fade measurement, and their CSS. The tree's search matches labels only, so searching by FMA identifier or BodyParts3D source name (which the old box supported) is no longer available. FMA IDs and source names remain in the details card.
 
 ## Theme and Tailwind setup
 
@@ -83,14 +86,15 @@ Preflight is kept so the registry component renders as designed. As in kidneys, 
 
 ## Friction and registry observations
 
-1. There is no way to make branch rows non-selectable. Clicking a group label or pressing Enter on it calls `onSelectionChange(groupId)`; this consumer ignores it, so the click visibly does nothing. A prop such as `selectableBranches={false}` would make the leaves-only decision explicit to users and assistive technology.
-2. Search and expansion are internal. Resetting them needs a remount, and an app cannot expand a collapsed group to show a row selected in 3D.
-3. Search matches `label` only. Consumers with secondary identifiers (FMA IDs here) cannot make them searchable without putting them in the visible label.
-4. The `+`/`−` disclosure glyphs and the visible/hidden/mixed buttons are text-only, with no slot for an icon or a per-leaf colour swatch.
-5. The CLI rewrote the exact `@base-ui/react` pin to `^1.8.0` in `package.json`; it was re-pinned by hand.
+Resolved by organui PR #12 and now used here: non-selectable group rows (`selectable: false`), per-leaf colour swatches (`color`), and expanding/scrolling to a selection made outside the tree (built-in reveal). Still open:
+
+1. Search and expansion are internal. Resetting them needs a remount (`key`).
+2. Search matches `label` only. Consumers with secondary identifiers (FMA IDs here) cannot make them searchable without putting them in the visible label.
+3. The `+`/`−` disclosure glyphs and the visible/hidden/mixed buttons are text-only, with no slot for an icon.
+4. The CLI rewrote the exact `@base-ui/react` pin to `^1.8.0` in `package.json` again; it was re-pinned by hand.
 
 None of these blocked the integration, and the component was not forked.
 
 ## Accessibility scope
 
-The tree supplies `role="tree"`/`treeitem` semantics, `aria-selected`, `aria-checked` (including `mixed`), `aria-level`/`setsize`/`posinset`, roving focus, and arrow, Home, End, Enter, and Space keys. These were exercised with Playwright in headless Chromium. **No screen-reader testing was done.**
+The tree supplies `role="tree"`/`treeitem` semantics, `aria-selected`, `aria-checked` (including `mixed`), `aria-level`/`setsize`/`posinset`, roving focus, and arrow, Home, End, Enter, and Space keys. Non-selectable group rows omit `aria-selected`, and the keyboard hint says Enter selects or expands a group. These were exercised with Playwright in headless Chromium. **No screen-reader testing was done.**

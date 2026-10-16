@@ -11,7 +11,7 @@ A focused, open-source 3D brain anatomy explorer from [OrganUI](https://github.c
 - Rotate, pinch/scroll, zoom buttons, reset, keyboard controls, and six named anatomical views. Manual rotation changes the label to **Custom view**.
 - Nineteen selectable source-backed groups: bilateral frontal, parietal, temporal, and occipital lobes; bilateral hippocampi; cerebellum; midbrain, pons, and medulla; and five ventricular-space surfaces.
 - Each named view is framed from the model's sampled surface, so the brain fills a similar share of the canvas from every side.
-- Synchronized scene/tree selection, search by structure name, hide, isolate, and restore. The anatomy panel uses the OrganUI registry `anatomy-tree` component: four interface groups (cerebral lobes, deep structures, brainstem & cerebellum, ventricular spaces) that expand, collapse, and show/hide their structures together, with a mixed state when only some are hidden. Selecting a structure ghosts the others to translucent, canvas-toned surfaces so the selection reads from any view, including deep structures such as the ventricles.
+- Synchronized scene/tree selection, search by structure name, hide, isolate, and restore. The anatomy panel uses the OrganUI registry `anatomy-tree` component: four interface groups (cerebral lobes, deep structures, brainstem & cerebellum, ventricular spaces) that expand, collapse, and show/hide their structures together, with a mixed state when only some are hidden. Groups are not selectable; each structure row shows its 3D colour, and a structure selected in 3D or by the tour is expanded and scrolled into view in the list. Selecting a structure ghosts the others to translucent, canvas-toned surfaces so the selection reads from any view, including deep structures such as the ventricles.
 - **Reveal inside** hides the four left cerebral-lobe surface groups while preserving deeper structures in their original alignment. It is a visibility reveal, not a cut surface or medical image.
 - A five-stop guided exploration that includes the supported reveal and reliably returns to the anterior overview.
 - Initially collapsed anatomy panel, mobile layout, reduced-motion handling, keyboard-accessible controls, loading progress, missing-model recovery, and a text alternative when 3D is unavailable.
@@ -49,7 +49,7 @@ Raw downloads stay in ignored `.asset-cache/`; the script downloads them when ab
 
 ## Registry component
 
-`src/components/ui/anatomy-tree.tsx` is installed unmodified from the OrganUI registry with the shadcn CLI (Tailwind CSS 4 and Base UI 1.8.0), and it is excluded from Prettier so its checksum stays stable. Brain-specific mapping lives in `src/anatomy-adapter.ts`. The install command, checksums, adapter table, and design decisions are in [registry integration](docs/REGISTRY_INTEGRATION.md).
+`src/components/ui/anatomy-tree.tsx` is installed unmodified from the OrganUI registry with the shadcn CLI (currently from organui PR #12, commit `d6b36d0`, served locally until it merges) (Tailwind CSS 4 and Base UI 1.8.0), and it is excluded from Prettier so its checksum stays stable. Brain-specific mapping lives in `src/anatomy-adapter.ts`. The install command, checksums, adapter table, and design decisions are in [registry integration](docs/REGISTRY_INTEGRATION.md).
 
 ## Model scope and provenance
 

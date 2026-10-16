@@ -52,23 +52,12 @@ export default function App() {
   const anatomyPanel = useRef<HTMLElement>(null)
   const sidebarToggle = useRef<HTMLButtonElement>(null)
   const focusPanel = useRef(false)
-  // Remounting clears the registry tree's internal search and disclosure state.
+  // Reset remounts the registry tree to clear its internal search and expansion.
+  // Selections made in 3D or the tour are revealed by the tree itself.
   const [treeKey, setTreeKey] = useState(0)
   const current = selected ? byId[selected] : null
   const visibleCount = structures.length - hidden.size
   const visibility = useMemo(() => visibilityFromHidden(hidden), [hidden])
-
-  // Keep the selected row in view inside the tree's own scroll area, e.g. after
-  // a 3D pick or tour step. Rows of collapsed groups are not rendered.
-  useLayoutEffect(() => {
-    const tree = anatomyPanel.current?.querySelector<HTMLElement>('[role="tree"]')
-    const row = tree?.querySelector<HTMLElement>('[role="treeitem"][aria-selected="true"]')
-    if (!tree || !row || tree.scrollHeight <= tree.clientHeight) return
-    const bounds = tree.getBoundingClientRect(),
-      item = row.getBoundingClientRect()
-    if (item.top < bounds.top) tree.scrollTop += item.top - bounds.top
-    else if (item.bottom > bounds.bottom) tree.scrollTop += item.bottom - bounds.bottom
-  }, [selected, step, sidebarOpen, treeKey])
 
   useLayoutEffect(() => {
     if (!sidebarOpen || !focusPanel.current) return
@@ -325,11 +314,9 @@ export default function App() {
             key={treeKey}
             data={anatomyTree}
             selectedId={selected}
-            onSelectionChange={(id) => {
-              // Group rows are interface groupings: they expand/collapse and toggle
-              // visibility, but selection (and its 3D emphasis) stays on one structure.
-              if (isStructureId(id)) select(id)
-            }}
+            // Group rows are `selectable: false`, so the tree only reports leaves;
+            // the guard keeps selection on a single scene structure regardless.
+            onSelectionChange={(id) => isStructureId(id) && select(id)}
             visibility={visibility}
             onVisibilityChange={changeVisibility}
             defaultExpandedIds={groupIds}

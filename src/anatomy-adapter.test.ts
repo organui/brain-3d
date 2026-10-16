@@ -23,6 +23,18 @@ describe('anatomy tree adapter', () => {
     )
   })
 
+  test('marks groups as non-selectable and colours leaves like their meshes', () => {
+    for (const group of anatomyTree) {
+      expect(group.selectable).toBe(false)
+      expect(group.color).toBeUndefined()
+      for (const leaf of group.children!) {
+        expect(leaf.selectable).toBeUndefined()
+        expect(leaf.color).toBe(structures.find(({ id }) => id === leaf.id)!.color)
+        expect(leaf.color).toMatch(/^#[0-9a-f]{6}$/)
+      }
+    }
+  })
+
   test('maps groups to their scene leaves and leaves to themselves', () => {
     expect(sceneIdsForNode('group-deep-structures')).toEqual([
       'left-hippocampus',

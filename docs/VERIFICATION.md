@@ -108,3 +108,18 @@ The hand-built anatomy list and its search box were replaced with the OrganUI re
 - Tailwind preflight regression check: computed styles of every element outside the anatomy list were compared with `origin/main` (overview, guided tour, About dialog; both viewports). The only differences were zero-width border-style values and the panel height change caused by the tree.
 - `anatomy.png`, `reveal.png`, `guided-reveal.png`, and `mobile-anatomy.png` were regenerated. `desktop.png`, `mobile.png`, and `model-failure.png` show the panel closed and were not regenerated. `deployed-preview.png` predates the tree.
 - Not tested: screen-reader sessions (no assistive-technology testing was done), physical touch devices, and browsers other than Chromium. The Vercel deployment above predates this change.
+
+## Registry anatomy tree update: colours, non-selectable groups, built-in reveal (2026-10-16)
+
+Reinstalled `anatomy-tree` from organui PR #12 (commit `d6b36d0`, unmerged, served locally; see [registry integration](REGISTRY_INTEGRATION.md)). Leaves now carry their mesh colour, group rows are `selectable: false`, and the app's own scroll-to-selection effect was removed in favour of the component's reveal. Checked with Bun 1.4.2 and Playwright 1.56 driving headless Chromium (SwiftShader WebGL) against the production build (`bun run preview`) on local port `4471`:
+
+- From a clean `node_modules`: `bun install --frozen-lockfile`, `bun run typecheck`, `bun test` (13 tests, 99 assertions), `bun run build`, `bun run verify:model`, and `bun run format:check` passed. `package.json` and `bun.lock` are unchanged (`@base-ui/react` stays pinned at 1.8.0).
+- `scripts/browser-check.cjs` passed at 1440×900 and 390×844, including the earlier checks above (with group Enter now expanding/collapsing) and:
+  - All 19 leaf rows show a visible swatch whose computed colour equals the structure colour the mesh uses; group rows have none. The chip dot for the selected structure has the same colour.
+  - Clicking a group label (desktop and mobile) or pressing Enter on it collapses and expands the group, the row has no `aria-selected`, and the selection is unchanged.
+  - With all four groups collapsed and the panel open, a 3D click selected **Right frontal lobe**: Cerebral lobes expanded, the other three groups stayed collapsed, and the row was selected and in view, with the view label still **Anterior**.
+  - With Cerebral lobes collapsed and the panel closed, a 3D click selected the same lobe; opening the panel from the chip showed the group expanded and the row selected and in view.
+  - On mobile, with Ventricular spaces collapsed and the row list scrolled to the top, the tour's last stop expanded the group and scrolled the list to **Right lateral ventricle**.
+  - Reveal inside scrolls the desktop row list to the hippocampus. Search, hide/show of leaves and groups (mixed state), Reset clearing search and expansion, and Escape focus return all passed. No horizontal overflow on mobile (`390 = 390`). No console or page errors.
+- `anatomy.png`, `reveal.png`, `guided-reveal.png`, and `mobile-anatomy.png` were regenerated and reviewed.
+- Not tested: screen readers, physical touch devices, browsers other than Chromium, and the install against organui.com (blocked here; to be re-verified after PR #12 merges).

@@ -1,13 +1,30 @@
 // Browser interaction check for the anatomy panel (registry anatomy tree).
 // Usage: PLAYWRIGHT_MODULE=/path/to/playwright node scripts/browser-check.cjs <port> <screenshot-dir>
-// Requires a running dev server on 127.0.0.1:<port> and a Chromium for Playwright.
+// Requires a running server (`bun run preview` or `bun run dev`) on 127.0.0.1:<port>, a Chromium
+// for Playwright (CHROMIUM_PATH overrides its executable), and Bun (run from the repo root).
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const assert = require('assert')
+const { execFileSync } = require('child_process')
+// Structure name -> colour, from the same catalog the 3D meshes are coloured from.
+const meshColors = JSON.parse(
+  execFileSync('bun', [
+    '-e',
+    "import { structures } from './src/anatomy'; console.log(JSON.stringify(Object.fromEntries(structures.map((s) => [s.name, s.color]))))",
+  ]).toString(),
+)
+const hex = (rgb) =>
+  '#' +
+  rgb
+    .match(/\d+/g)
+    .slice(0, 3)
+    .map((n) => Number(n).toString(16).padStart(2, '0'))
+    .join('')
 const [port, shots] = process.argv.slice(2)
 const url = `http://127.0.0.1:${port}/`
 const log = (...a) => console.log('✔', ...a)
 ;(async () => {
   const browser = await chromium.launch({
+    executablePath: process.env.CHROMIUM_PATH || undefined,
     args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
   })
   const errors = []
@@ -26,6 +43,49 @@ const log = (...a) => console.log('✔', ...a)
   const status = (p) => p.locator('.scene-status').innerText()
   const viewLabel = (p) => p.locator('.view-trigger').getAttribute('aria-label')
   const row = (p, name) => p.getByRole('treeitem', { name, exact: true })
+  const swatches = (p) =>
+    p.getByRole('treeitem').evaluateAll((els) =>
+      els.map((e) => {
+        const dot = e.querySelector('span[aria-hidden="true"].rounded-full')
+        const box = dot?.getBoundingClientRect()
+        return {
+          name: e.getAttribute('aria-label'),
+          level: e.getAttribute('aria-level'),
+          color: dot ? getComputedStyle(dot).backgroundColor : null,
+          size: box ? [box.width, box.height] : null,
+        }
+      }),
+    )
+  async function checkSwatches(p) {
+    const rows = await swatches(p)
+    for (const r of rows) {
+      if (r.level === '1') assert.equal(r.color, null, `${r.name} group has no swatch`)
+      else {
+        assert.ok(r.color, `${r.name} has a swatch`)
+        assert.equal(hex(r.color), meshColors[r.name], `${r.name} swatch matches mesh colour`)
+        assert.ok(r.size[0] >= 8 && r.size[1] >= 8, `${r.name} swatch is visible`)
+      }
+    }
+    return rows.filter((r) => r.level !== '1').length
+  }
+  const selectedInView = (p) =>
+    p.evaluate(() => {
+      const t = document.querySelector('[role=tree]').getBoundingClientRect()
+      const r = document.querySelector('[role=treeitem][aria-selected=true]')
+      if (!r) return false
+      const b = r.getBoundingClientRect()
+      return b.height > 0 && b.top >= t.top - 1 && b.bottom <= t.bottom + 1
+    })
+  const groupOf = (p, name) =>
+    p.evaluate((name) => {
+      const rows = [...document.querySelectorAll('[role=treeitem]')]
+      const i = rows.findIndex((r) => r.getAttribute('aria-label') === name)
+      return rows
+        .slice(0, i)
+        .reverse()
+        .find((r) => r.getAttribute('aria-level') === '1')
+        ?.getAttribute('aria-label')
+    }, name)
   const active = (p) =>
     p.evaluate(() => {
       const a = document.activeElement
@@ -42,6 +102,8 @@ const log = (...a) => console.log('✔', ...a)
   log('focus moves into panel on open')
   assert.equal(await page.getByRole('treeitem').count(), 23)
   log('tree shows 4 groups + 19 leaves expanded')
+  assert.equal(await checkSwatches(page), 19)
+  log('19 leaf colour swatches visible and equal to the mesh colours; groups have none')
 
   // search
   const search = page.getByLabel('Search brain structures')
@@ -67,16 +129,28 @@ const log = (...a) => console.log('✔', ...a)
   assert.equal(await viewLabel(page), 'Camera view: Anterior')
   log('tree selection drives chip, details; view label unchanged')
 
-  // group label click does not select
+  // group label click expands/collapses and does not select
   await search.fill('')
   await page.waitForTimeout(200)
-  await row(page, 'Cerebral lobes')
-    .getByRole('button', { name: 'Cerebral lobes', exact: true })
-    .click()
+  const chipColor = await page
+    .locator('.selection-chip .color-dot')
+    .evaluate((e) => getComputedStyle(e).backgroundColor)
+  assert.equal(hex(chipColor), meshColors['Left hippocampus'])
+  const groupLabel = row(page, 'Cerebral lobes').getByRole('button', {
+    name: 'Cerebral lobes',
+    exact: true,
+  })
+  await groupLabel.click()
   await page.waitForTimeout(200)
+  assert.equal(await page.getByRole('treeitem').count(), 15)
+  assert.equal(await row(page, 'Cerebral lobes').getAttribute('aria-expanded'), 'false')
   assert.equal(await page.locator('.detail-card h2').innerText(), 'Left hippocampus')
-  assert.equal(await row(page, 'Cerebral lobes').getAttribute('aria-selected'), 'false')
-  log('group label click keeps leaf selection')
+  assert.equal(await row(page, 'Cerebral lobes').getAttribute('aria-selected'), null)
+  await groupLabel.click()
+  await page.waitForTimeout(200)
+  assert.equal(await page.getByRole('treeitem').count(), 23)
+  assert.equal(await page.locator('.detail-card h2').innerText(), 'Left hippocampus')
+  log('group label click collapses/expands, has no aria-selected, keeps leaf selection')
 
   // hide/show leaf -> mixed group
   await row(page, 'Pons').getByRole('button', { name: 'Visible: hide Pons' }).click()
@@ -155,7 +229,11 @@ const log = (...a) => console.log('✔', ...a)
   )
   await page.keyboard.press('Enter')
   await page.waitForTimeout(150)
+  assert.equal(await page.getByRole('treeitem').count(), 15)
   assert.equal(await page.locator('.detail-card h2').innerText(), 'Medulla oblongata')
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(150)
+  assert.equal(await page.getByRole('treeitem').count(), 23)
   await page.keyboard.press('ArrowLeft')
   assert.equal(await page.getByRole('treeitem').count(), 15)
   await page.keyboard.press('ArrowRight')
@@ -166,12 +244,41 @@ const log = (...a) => console.log('✔', ...a)
   )
   assert.match(await status(page), /19 of 19/)
   log(
-    'keyboard: arrows/Home/End move, Enter selects leaf (ignored on group), Space toggles, Left/Right collapse/expand',
+    'keyboard: arrows/Home/End move, Enter selects a leaf (expands/collapses a group), Space toggles, Left/Right collapse/expand',
   )
   await page.getByRole('button', { name: 'Clear selection' }).click()
 
+  // built-in reveal: collapse every group, then pick in 3D with the panel open
+  for (const g of [
+    'Cerebral lobes',
+    'Deep structures',
+    'Brainstem & cerebellum',
+    'Ventricular spaces',
+  ])
+    await row(page, g).getByRole('button', { name: g, exact: true }).click()
+  await page.waitForTimeout(200)
+  assert.equal(await page.getByRole('treeitem').count(), 4)
+  const openBox = await page.locator('.canvas-wrap canvas').boundingBox()
+  await page.mouse.click(openBox.x + openBox.width / 2 - 40, openBox.y + openBox.height * 0.4)
+  await page.waitForTimeout(500)
+  const openPick = await page.locator('.selection-chip .selection-name').innerText()
+  assert.equal(await row(page, openPick).getAttribute('aria-selected'), 'true')
+  assert.ok(await selectedInView(page))
+  const openGroup = await groupOf(page, openPick)
+  assert.equal(await row(page, openGroup).getAttribute('aria-expanded'), 'true')
+  assert.equal(await page.getByRole('treeitem', { expanded: false }).count(), 3)
+  assert.equal(await viewLabel(page), 'Camera view: Anterior')
+  log('3D pick into a collapsed group:', openPick, 'revealed in', openGroup, 'and selected in view')
+  await page.mouse.move(5, 5)
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: `${shots}/v-reveal-open.png` })
+  await page.getByRole('button', { name: 'Clear selection' }).click()
+  // collapse it again, so the panel-closed pick below also needs the tree to reveal it
+  await row(page, openGroup).getByRole('button', { name: openGroup, exact: true }).click()
+  assert.equal(await page.getByRole('treeitem').count(), 4)
+
   // escape focus return
-  await row(page, 'Pons').focus()
+  await row(page, 'Deep structures').focus()
   await page.keyboard.press('Escape')
   await page.waitForTimeout(200)
   assert.equal(await page.locator('#anatomy').isHidden(), true)
@@ -195,13 +302,11 @@ const log = (...a) => console.log('✔', ...a)
   assert.equal(await page.locator('#anatomy').isHidden(), false)
   assert.equal(await active(page), 'anatomy')
   assert.equal(await row(page, picked).getAttribute('aria-selected'), 'true')
-  const inView = await page.evaluate(() => {
-    const t = document.querySelector('[role=tree]').getBoundingClientRect()
-    const r = document.querySelector('[role=treeitem][aria-selected=true]').getBoundingClientRect()
-    return r.top >= t.top - 1 && r.bottom <= t.bottom + 1
-  })
-  assert.ok(inView)
-  log('chip name opens panel; tree row selected and in view')
+  assert.ok(await selectedInView(page))
+  assert.equal(await row(page, await groupOf(page, picked)).getAttribute('aria-expanded'), 'true')
+  log(
+    '3D pick with the panel closed into a collapsed group; chip opens panel with the row revealed, selected and in view',
+  )
 
   // hidden structure not pickable: hide picked, click same point
   await row(page, picked)
@@ -242,12 +347,7 @@ const log = (...a) => console.log('✔', ...a)
   assert.match(await status(page), /15 of 19/)
   assert.equal(await row(page, 'Cerebral lobes').getAttribute('aria-checked'), 'mixed')
   assert.equal(await row(page, 'Left hippocampus').getAttribute('aria-selected'), 'true')
-  const revealInView = await page.evaluate(() => {
-    const t = document.querySelector('[role=tree]').getBoundingClientRect()
-    const r = document.querySelector('[role=treeitem][aria-selected=true]').getBoundingClientRect()
-    return r.top >= t.top - 1 && r.bottom <= t.bottom + 1
-  })
-  assert.ok(revealInView)
+  assert.ok(await selectedInView(page))
   log('reveal inside: 15/19, lobes mixed, hippocampus row selected and scrolled into view')
   await page.mouse.move(5, 5)
   await page.screenshot({ path: `${shots}/reveal.png` })
@@ -273,6 +373,19 @@ const log = (...a) => console.log('✔', ...a)
   await page.getByRole('button', { name: 'Expand anatomy sidebar' }).click()
   await page.waitForTimeout(300)
   assert.equal(await active(page), 'anatomy')
+  assert.equal(await checkSwatches(page), 19)
+  const mobileGroup = row(page, 'Deep structures').getByRole('button', {
+    name: 'Deep structures',
+    exact: true,
+  })
+  await mobileGroup.click()
+  await page.waitForTimeout(200)
+  assert.equal(await page.getByRole('treeitem').count(), 21)
+  assert.equal(await page.locator('.selection-chip').count(), 0)
+  await mobileGroup.click()
+  await page.waitForTimeout(200)
+  assert.equal(await page.getByRole('treeitem').count(), 23)
+  log('mobile: 19 colour swatches; group label collapses/expands without selecting')
   await page.getByLabel('Search brain structures').fill('cere')
   await page.waitForTimeout(200)
   await row(page, 'Cerebellum').getByRole('button', { name: 'Cerebellum', exact: true }).click()
@@ -288,10 +401,33 @@ const log = (...a) => console.log('✔', ...a)
   ])
   assert.equal(overflow[0], overflow[1])
   log('mobile: search/select/hide/show ok, no horizontal overflow', overflow.join('='))
+  // built-in reveal + scroll: collapse Ventricular spaces, scroll the row list to the top,
+  // then let the tour select the right lateral ventricle near the end of the list
+  await page.getByLabel('Search brain structures').fill('')
+  await row(page, 'Ventricular spaces')
+    .getByRole('button', { name: 'Ventricular spaces', exact: true })
+    .click()
+  await page.locator('[role=tree]').evaluate((t) => (t.scrollTop = 0))
+  const scrollable = await page
+    .locator('[role=tree]')
+    .evaluate((t) => t.scrollHeight > t.clientHeight)
+  assert.ok(scrollable)
+  await page.getByRole('button', { name: /Start guided/ }).click()
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Next stop' }).click()
+  await page.waitForTimeout(600)
+  assert.equal(await row(page, 'Right lateral ventricle').getAttribute('aria-selected'), 'true')
+  assert.equal(await row(page, 'Ventricular spaces').getAttribute('aria-expanded'), 'true')
+  assert.ok(await page.locator('[role=tree]').evaluate((t) => t.scrollTop > 0))
+  assert.ok(await selectedInView(page))
+  log('mobile: tour step into a collapsed group expands it and scrolls the row list to the row')
+  await page.getByRole('button', { name: 'End guided exploration' }).click()
+  await page.waitForTimeout(300)
+  await page.locator('[role=tree]').evaluate((t) => (t.scrollTop = 0))
   await page.locator('#anatomy').evaluate((el) => el.scrollIntoView({ block: 'start' }))
   await page.mouse.move(5, 5)
   await page.waitForTimeout(300)
   await page.screenshot({ path: `${shots}/mobile-anatomy.png` })
+  await row(page, 'Pons').focus()
   await page.keyboard.press('Escape')
   await page.waitForTimeout(200)
   assert.equal(
