@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   ArrowLeft,
@@ -6,7 +6,6 @@ import {
   ArrowUpRight,
   BookOpen,
   Check,
-  ChevronRight,
   Eye,
   EyeOff,
   Focus,
@@ -17,17 +16,23 @@ import {
   PanelRightOpen,
   Plus,
   RotateCcw,
-  Search,
   X,
 } from 'lucide-react'
 import Viewer, { type ViewerHandle } from './Viewer'
 import ViewMenu from './ViewMenu'
 import { isolatedHidden, revealHidden, tourHidden } from './explorerState'
+import { AnatomyTree } from '@/components/ui/anatomy-tree'
+import {
+  anatomyTree,
+  groupIds,
+  hiddenFromVisibility,
+  isStructureId,
+  visibilityFromHidden,
+} from './anatomy-adapter'
 import {
   anatomySource,
   ventricleSource,
   byId,
-  groups,
   leftSurfaceIds,
   structures,
   tour,
@@ -37,7 +42,6 @@ import {
 export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [query, setQuery] = useState('')
   const [view, setView] = useState<View | 'Custom view'>('Anterior')
   const [ready, setReady] = useState(false)
   const [step, setStep] = useState<number | null>(null)
@@ -48,43 +52,23 @@ export default function App() {
   const anatomyPanel = useRef<HTMLElement>(null)
   const sidebarToggle = useRef<HTMLButtonElement>(null)
   const focusPanel = useRef(false)
-  const structureList = useRef<HTMLDivElement>(null)
-  const selectedRow = useRef<HTMLLIElement>(null)
-  const [listEdges, setListEdges] = useState({ above: false, below: false })
+  // Remounting clears the registry tree's internal search and disclosure state.
+  const [treeKey, setTreeKey] = useState(0)
   const current = selected ? byId[selected] : null
   const visibleCount = structures.length - hidden.size
-  const matches = structures.filter((s) =>
-    `${s.name} ${s.sourceName} ${s.fma} ${s.group}`
-      .toLowerCase()
-      .includes(query.toLowerCase().trim()),
-  )
-  useLayoutEffect(() => {
-    const list = structureList.current,
-      row = selectedRow.current
-    if (!list || !row || list.scrollHeight <= list.clientHeight) return
-    const bounds = list.getBoundingClientRect(),
-      item = row.getBoundingClientRect()
-    if (item.top < bounds.top) list.scrollTop += item.top - bounds.top
-    else if (item.bottom > bounds.bottom) list.scrollTop += item.bottom - bounds.bottom
-  }, [selected, query, step, sidebarOpen])
+  const visibility = useMemo(() => visibilityFromHidden(hidden), [hidden])
 
-  function measureList() {
-    const list = structureList.current
-    if (!list) return
-    const above = list.scrollTop > 2
-    const below = list.scrollTop + list.clientHeight < list.scrollHeight - 2
-    setListEdges((edges) =>
-      edges.above === above && edges.below === below ? edges : { above, below },
-    )
-  }
-  useEffect(() => {
-    const list = structureList.current
-    if (!list) return
-    const observer = new ResizeObserver(measureList)
-    observer.observe(list)
-    measureList()
-    return () => observer.disconnect()
-  }, [sidebarOpen, query])
+  // Keep the selected row in view inside the tree's own scroll area, e.g. after
+  // a 3D pick or tour step. Rows of collapsed groups are not rendered.
+  useLayoutEffect(() => {
+    const tree = anatomyPanel.current?.querySelector<HTMLElement>('[role="tree"]')
+    const row = tree?.querySelector<HTMLElement>('[role="treeitem"][aria-selected="true"]')
+    if (!tree || !row || tree.scrollHeight <= tree.clientHeight) return
+    const bounds = tree.getBoundingClientRect(),
+      item = row.getBoundingClientRect()
+    if (item.top < bounds.top) tree.scrollTop += item.top - bounds.top
+    else if (item.bottom > bounds.bottom) tree.scrollTop += item.bottom - bounds.bottom
+  }, [selected, step, sidebarOpen, treeKey])
 
   useLayoutEffect(() => {
     if (!sidebarOpen || !focusPanel.current) return
@@ -122,7 +106,7 @@ export default function App() {
   function reset() {
     setSelected(null)
     setHidden(new Set())
-    setQuery('')
+    setTreeKey((key) => key + 1)
     setStep(null)
     controls.current?.preset('Anterior')
     setView('Anterior')
@@ -139,6 +123,16 @@ export default function App() {
     setHidden(next)
     setAnnouncement(`${byId[id].name} ${next.has(id) ? 'hidden' : 'shown'}.`)
   }
+  function changeVisibility(next: Record<string, boolean>) {
+    const nextHidden = hiddenFromVisibility(next)
+    const changed = structures.filter(({ id }) => hidden.has(id) !== nextHidden.has(id))
+    setHidden(nextHidden)
+    setAnnouncement(
+      changed.length === 1
+        ? `${changed[0].name} ${nextHidden.has(changed[0].id) ? 'hidden' : 'shown'}.`
+        : `${structures.length - nextHidden.size} of ${structures.length} structures visible.`,
+    )
+  }
   function isolate(id: string) {
     setHidden(isolatedHidden(id))
     setAnnouncement(`${byId[id].name} isolated. Restore all to show surrounding anatomy.`)
@@ -154,7 +148,6 @@ export default function App() {
   function goToStep(index: number) {
     const next = tour[index]
     setStep(index)
-    setQuery('')
     setSelected(next.id)
     setHidden(tourHidden(next))
     preset(next.view)
@@ -224,10 +217,7 @@ export default function App() {
           <Viewer
             selected={selected}
             hidden={hidden}
-            onSelect={(id) => {
-              setQuery('')
-              select(id)
-            }}
+            onSelect={select}
             onReady={setReady}
             onFreeView={() => setView('Custom view')}
             controlsRef={controls}
@@ -331,80 +321,21 @@ export default function App() {
               <X size={18} />
             </button>
           </div>
-          <div className="search-wrap">
-            <Search size={16} />
-            <input
-              type="search"
-              aria-label="Search structures"
-              placeholder="Find a structure…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            {query && (
-              <button aria-label="Clear search" onClick={() => setQuery('')}>
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          <div
-            className={`structure-list ${listEdges.above ? 'more-above' : ''} ${listEdges.below ? 'more-below' : ''}`}
-            aria-label="Brain structures"
-            ref={structureList}
-            onScroll={measureList}
-          >
-            {groups.map((group) => {
-              const items = matches.filter((s) => s.group === group)
-              if (!items.length) return null
-              return (
-                <section key={group} aria-label={group}>
-                  <h3>{group}</h3>
-                  <ul>
-                    {items.map((s) => (
-                      <li
-                        key={s.id}
-                        ref={selected === s.id ? selectedRow : undefined}
-                        className={`${selected === s.id ? 'selected' : ''} ${hidden.has(s.id) ? 'is-hidden' : ''}`}
-                        style={{ '--structure-color': s.color } as CSSProperties}
-                      >
-                        <button
-                          className="structure-select"
-                          aria-label={`Select ${s.name}`}
-                          aria-pressed={selected === s.id}
-                          onClick={() => select(s.id)}
-                        >
-                          <span className="color-dot" />
-                          <span>
-                            {s.name}
-                            {hidden.has(s.id) && <small>Hidden</small>}
-                          </span>
-                          {selected === s.id ? <ChevronRight size={15} /> : null}
-                        </button>
-                        <button
-                          className="visibility-button"
-                          aria-label={`${hidden.has(s.id) ? 'Show' : 'Hide'} ${s.name}`}
-                          aria-pressed={!hidden.has(s.id)}
-                          onClick={() => toggle(s.id)}
-                          title={`${hidden.has(s.id) ? 'Show' : 'Hide'} structure`}
-                        >
-                          {hidden.has(s.id) ? <EyeOff size={15} /> : <Eye size={15} />}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )
-            })}
-            {!matches.length && (
-              <div className="no-results">
-                <Search size={23} />
-                <h3>No matching structures</h3>
-                <p>Try “frontal”, “ventricle”, or an FMA identifier.</p>
-                <button className="text-button" onClick={() => setQuery('')}>
-                  Clear search
-                </button>
-              </div>
-            )}
-          </div>
+          <AnatomyTree
+            key={treeKey}
+            data={anatomyTree}
+            selectedId={selected}
+            onSelectionChange={(id) => {
+              // Group rows are interface groupings: they expand/collapse and toggle
+              // visibility, but selection (and its 3D emphasis) stays on one structure.
+              if (isStructureId(id)) select(id)
+            }}
+            visibility={visibility}
+            onVisibilityChange={changeVisibility}
+            defaultExpandedIds={groupIds}
+            label="Brain structures"
+            className="registry-tree"
+          />
 
           <section
             className={`detail-card ${current ? 'has-selection' : ''}`}
