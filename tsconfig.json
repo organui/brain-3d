@@ -10,6 +10,9 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "types": ["vite/client", "bun"]
   },
   "include": ["src", "scripts", "vite.config.ts"]
