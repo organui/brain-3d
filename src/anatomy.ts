@@ -235,7 +235,7 @@ export const tour: {
   {
     id: 'right-lateral-ventricle',
     title: 'Trace an internal space',
-    text: 'Finish with an isolated lateral ventricle. The solid surface represents a cavity through which cerebrospinal fluid circulates—not tissue or MRI data.',
+    text: 'Finish with an isolated lateral ventricle. The solid surface represents a cavity through which cerebrospinal fluid circulates, not tissue or MRI data.',
     view: 'Superior',
     isolate: true,
   },
